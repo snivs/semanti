@@ -106,7 +106,99 @@ foreach ($callbacks as $callback) {
     }
 }
 
+// Initialize db connections ---------------------------------------------------
+
+$dbRoot = "$root/_application/environments/{$env['path']}/_application/common/config/multidb/";
+$targetDbRoot= "$root/_application/common/config/multidb/";
+$dbFiles = getFileList($dbRoot);
+foreach ($dbFiles as $file){
+    $targetFile = $targetDbRoot.$file;
+    if ($all) {
+        echo "  overwrite $file\n";
+    } else {
+        echo "      exist $file\n";
+        if (empty($params['overwrite'])){
+            echo "            ...overwrite? [Yes|No|All|Quit] ";
+            $answer = trim(fgets(STDIN));
+        } else {
+            $answer = $params['overwrite'];
+        }
+        
+        if (strncasecmp($answer, 'q', 1)===0) {
+            echo "\n  Quit initialization.\n";
+            exit(0);
+        } else if (strncasecmp($answer, 'y', 1)===0) {
+            echo "  overwrite $file\n";
+        } else if (strncasecmp($answer, 'a', 1)===0) {
+            echo "  overwrite $file\n";
+            $all = true;
+        } else {
+            echo "       skip $file\n";
+            continue;
+        }
+    }
+    
+    if (strncasecmp($file, 'db', 2) === 0){
+        $contents = initDb($dbRoot.$file);
+    }
+    
+    file_put_contents($targetFile, $contents);
+}
+// -----------------------------------------------------------------------------
+
 echo "\n  ... initialization completed.\n\n";
+
+function initDb($configFile){
+    $settingregex = "/([^=]+)=>([^,]+)/";
+    $regex = "/'.*\\n/";
+    $contents = file_get_contents($configFile);
+    $file = basename($configFile);
+    $array=[];
+    $config=[];
+    preg_match_all($regex,$contents,$array);
+    echo "    Please confirm your settings for the $file connection.".PHP_EOL;
+    echo "    Leave your value empty to use the default value shown in bracess.\n";
+    foreach ($array[0] as $confLine){
+        preg_match_all($settingregex,$confLine,$values);
+        $index=trim($values[1][0]," '");
+        $defaultValue=trim($values[2][0]," '");
+        if (strcmp($index,'dsn')==0){
+            echo "    dsn type [mysql]: ";
+            $dbm = trim(fgets(STDIN));
+            $dbm=$dbm===""?"mysql":$dbm;
+//            echo "      * $dbm".PHP_EOL;
+            echo "    dsn host [127.0.0.1]: ";
+            $host = trim(fgets(STDIN));
+            $host=$host===""?"127.0.0.1":$host;
+//            echo "      * $host".PHP_EOL;
+            echo "    dsn dbname [semanti]: ";
+            $db = trim(fgets(STDIN));
+            $db=$db===""?"semanti":$db;
+//            echo "      * $db".PHP_EOL;
+            $dsn= "$dbm:host=$host;dbname=$db";
+            $config['dsn']=$dsn;
+            echo "    dsn: $dsn".PHP_EOL;
+            continue;
+        }
+        echo "    $index [$defaultValue]: ";
+        $value = trim(fgets(STDIN));
+        if (strcmp("true",strtolower($value))===0){
+            $value=true;
+        }
+        if (strcmp("false",strtolower($value))===0){
+            $value=false;
+        }
+        if (strcmp("true",strtolower($defaultValue))===0){
+            $defaultValue=true;
+        }
+        if (strcmp("false",strtolower($defaultValue))===0){
+            $defaultValue=false;
+        }
+        $config[$index]=$value==""?$defaultValue:$value;
+//        echo "      * ".var_export($config[$index],true).PHP_EOL;
+    }
+    return "<?php return ".str_replace("\\\\","\\",var_export($config,true))."; ?>";
+}
 
 function getFileList($root, $basePath = '')
 {
