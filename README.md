@@ -104,10 +104,10 @@ and execute ```php init``` command.
 
 **Configure App**
 ---
-Now you need to tell your application to use database that you have previously created.
-Open up config files: ```advanced/_application/common/config/multidb/db.php``` and ```advanced/_application/common/config/multidb/dbLogger.php```
-and adjust your connection credentials.
+During the init process, you need to tell your application to use database that you have previously created.
 
+You will be prompted for two different configurations, one for the db connection
+and another for the dbLogger connection.
 
 **Apply migrations**
 ---
